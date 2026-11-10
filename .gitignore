@@ -179,3 +179,14 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# --- ParkFlow ---
+# Generated data (Bronze/Silver files are recreated by the simulator)
+data/
+# Google Cloud credentials: NEVER commit service account keys
+*-key.json
+service-account*.json
+credentials*.json
+# Terraform state and local overrides
+.terraform/
+*.tfstate
+*.tfstate.*

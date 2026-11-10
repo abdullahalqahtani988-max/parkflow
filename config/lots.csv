@@ -1,0 +1,6 @@
+lot_id,lot_name,lot_type,district,capacity,latitude,longitude
+RUH-MALL-01,Grand Mall,mall,Al Olaya,1200,24.6995,46.6837
+RUH-HOSP-01,Central Hospital,hospital,Al Malaz,400,24.6633,46.7322
+RUH-UNIV-01,Tech University,university,Al Rimal,600,24.7926,46.8170
+RUH-OFFC-01,Business Tower,office,Al Aqiq,300,24.7660,46.6400
+RUH-PLZA-01,Neighborhood Plaza,mall,Al Yarmuk,150,24.8130,46.7700
