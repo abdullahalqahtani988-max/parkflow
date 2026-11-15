@@ -1,0 +1,34 @@
+config {
+  type: "view",
+  schema: "parkflow_staging",
+  description: "Every Bronze row with a data-quality verdict. error_reason IS NULL means the row is valid.",
+  tags: ["silver"]
+}
+
+-- Validation rules live in ONE place, so Silver (valid rows) and the DLQ (invalid rows)
+-- can never disagree about what "valid" means.
+SELECT
+  b.event_id,
+  b.event_ts,
+  b.sent_ts,
+  b.lot_id,
+  b.spot_id,
+  b.sensor_id,
+  b.status,
+  b.battery_pct,
+  b.rssi_dbm,
+  b.firmware,
+  b.dt AS bronze_dt,
+  TIMESTAMP_DIFF(b.sent_ts, b.event_ts, SECOND) AS delivery_delay_sec,
+  CASE
+    WHEN b.event_id IS NULL                                   THEN "missing_event_id"
+    WHEN b.spot_id IS NULL                                    THEN "missing_spot_id"
+    WHEN b.status IS NULL OR b.status NOT IN ("OCCUPIED", "VACANT") THEN "invalid_status"
+    WHEN b.event_ts > TIMESTAMP_ADD(b.sent_ts, INTERVAL 5 MINUTE)    THEN "event_ts_in_future"
+    WHEN l.lot_id IS NULL                                     THEN "unknown_lot"
+    WHEN b.battery_pct NOT BETWEEN 0 AND 100                  THEN "invalid_battery"
+    ELSE NULL
+  END AS error_reason
+FROM ${ref("parkflow_bronze", "sensor_events")} AS b
+LEFT JOIN ${ref("parkflow_ref", "lots")} AS l
+  ON b.lot_id = l.lot_id

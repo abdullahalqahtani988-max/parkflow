@@ -1,0 +1,29 @@
+config {
+  type: "table",
+  schema: "parkflow_gold",
+  description: "Gold: daily KPIs per lot (Riyadh calendar day): arrivals, turnover, average stay, peak occupancy.",
+  tags: ["gold"]
+}
+
+WITH stays AS (
+  SELECT lot_id, DATE(start_ts, "Asia/Riyadh") AS day, COUNT(*) AS arrivals,
+         ROUND(AVG(IF(NOT is_open, duration_min, NULL)), 1) AS avg_stay_min
+  FROM ${ref("parking_sessions")}
+  GROUP BY lot_id, day
+),
+peaks AS (
+  SELECT lot_id, DATE(hour_riyadh) AS day, MAX(occupancy_rate) AS peak_occupancy_rate,
+         ARRAY_AGG(EXTRACT(HOUR FROM hour_riyadh) ORDER BY occupancy_rate DESC LIMIT 1)[OFFSET(0)] AS peak_hour
+  FROM ${ref("occupancy_hourly")}
+  GROUP BY lot_id, day
+)
+SELECT
+  p.day, p.lot_id, l.lot_name, l.lot_type, l.capacity,
+  COALESCE(s.arrivals, 0) AS arrivals,
+  ROUND(SAFE_DIVIDE(COALESCE(s.arrivals, 0), l.capacity), 2) AS turnover,   -- cars per spot per day
+  s.avg_stay_min,
+  p.peak_occupancy_rate,
+  p.peak_hour
+FROM peaks AS p
+JOIN ${ref("parkflow_ref", "lots")} AS l USING (lot_id)
+LEFT JOIN stays AS s USING (lot_id, day)

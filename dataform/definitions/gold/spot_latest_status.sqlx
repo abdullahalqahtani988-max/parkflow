@@ -1,0 +1,14 @@
+config {
+  type: "table",
+  schema: "parkflow_gold",
+  description: "Gold: latest known status of every spot (batch view; the streaming path keeps the live version).",
+  tags: ["gold"]
+}
+
+SELECT
+  e.spot_id, e.lot_id, l.lot_name, l.latitude, l.longitude,
+  e.status, e.event_ts AS status_since, e.battery_pct, e.rssi_dbm
+FROM ${ref("parkflow_silver", "sensor_events")} AS e
+JOIN ${ref("parkflow_ref", "lots")} AS l USING (lot_id)
+WHERE e.event_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${dataform.projectConfig.vars.silver_lookback_days} DAY)
+QUALIFY ROW_NUMBER() OVER (PARTITION BY e.spot_id ORDER BY e.event_ts DESC) = 1

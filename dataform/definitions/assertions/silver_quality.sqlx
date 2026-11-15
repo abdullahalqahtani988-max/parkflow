@@ -1,0 +1,18 @@
+config {
+  type: "assertion",
+  description: "Silver must be clean: unique event_id, valid status, no null keys, sane battery. Any returned row = failure.",
+  tags: ["silver"]
+}
+
+-- Written by hand (not built-in assertions) because Silver has require_partition_filter=TRUE.
+WITH s AS (
+  SELECT * FROM ${ref("parkflow_silver", "sensor_events")}
+  WHERE event_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${dataform.projectConfig.vars.silver_lookback_days} DAY)
+)
+SELECT "duplicate_event_id" AS failed_check, event_id AS detail FROM s GROUP BY event_id HAVING COUNT(*) > 1
+UNION ALL
+SELECT "invalid_status", event_id FROM s WHERE status NOT IN ("OCCUPIED", "VACANT")
+UNION ALL
+SELECT "null_key", event_id FROM s WHERE event_id IS NULL OR spot_id IS NULL OR lot_id IS NULL OR event_ts IS NULL
+UNION ALL
+SELECT "invalid_battery", event_id FROM s WHERE battery_pct NOT BETWEEN 0 AND 100

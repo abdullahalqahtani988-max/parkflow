@@ -1,0 +1,18 @@
+config {
+  type: "incremental",
+  schema: "parkflow_ops",
+  description: "Dead Letter Queue: Bronze rows that failed validation, kept with the reason for inspection.",
+  uniqueKey: ["event_id"],
+  bigquery: { partitionBy: "bronze_dt", clusterBy: ["error_reason"] },
+  tags: ["silver"]
+}
+
+SELECT
+  COALESCE(event_id, TO_HEX(MD5(TO_JSON_STRING(v)))) AS event_id,
+  event_ts, sent_ts, lot_id, spot_id, sensor_id, status, battery_pct,
+  rssi_dbm, firmware, bronze_dt, error_reason,
+  CURRENT_TIMESTAMP() AS detected_at
+FROM ${ref("bronze_validated")} AS v
+WHERE error_reason IS NOT NULL
+${when(incremental(), `AND bronze_dt >= (SELECT DATE_SUB(MAX(bronze_dt), INTERVAL 1 DAY) FROM ${self()})`)}
+QUALIFY ROW_NUMBER() OVER (PARTITION BY COALESCE(event_id, TO_HEX(MD5(TO_JSON_STRING(v)))) ORDER BY sent_ts) = 1

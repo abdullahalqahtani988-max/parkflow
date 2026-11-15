@@ -1,0 +1,23 @@
+config {
+  type: "table",
+  schema: "parkflow_gold",
+  description: "Gold: data-quality report per Bronze day: totals, duplicates, DLQ by reason, late events.",
+  tags: ["gold"]
+}
+
+SELECT
+  bronze_dt,
+  COUNT(*) AS bronze_rows,
+  COUNT(DISTINCT event_id) AS distinct_event_ids,
+  COUNT(*) - COUNT(DISTINCT event_id) AS duplicate_rows,
+  COUNTIF(error_reason IS NULL) AS valid_rows,
+  COUNTIF(error_reason IS NOT NULL) AS invalid_rows,
+  COUNTIF(error_reason = "missing_spot_id") AS missing_spot_id,
+  COUNTIF(error_reason = "invalid_status") AS invalid_status,
+  COUNTIF(error_reason = "event_ts_in_future") AS event_ts_in_future,
+  COUNTIF(error_reason = "unknown_lot") AS unknown_lot,
+  COUNTIF(error_reason = "invalid_battery") AS invalid_battery,
+  COUNTIF(error_reason IS NULL AND delivery_delay_sec > 300) AS late_rows,
+  ROUND(SAFE_DIVIDE(COUNTIF(error_reason IS NOT NULL), COUNT(*)) * 100, 3) AS invalid_pct
+FROM ${ref("bronze_validated")}
+GROUP BY bronze_dt

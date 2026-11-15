@@ -1,0 +1,42 @@
+config {
+  type: "table",
+  schema: "parkflow_gold",
+  description: "Gold: average occupancy per lot per hour (complete hourly grid, zeros included). Input for dashboards and BQML.",
+  bigquery: { partitionBy: "DATE(hour_ts)", clusterBy: ["lot_id"] },
+  tags: ["gold"]
+}
+
+WITH session_hours AS (
+  -- Split every session into the hours it overlaps, with the seconds spent in each hour.
+  SELECT
+    s.lot_id,
+    h AS hour_ts,
+    TIMESTAMP_DIFF(LEAST(s.end_ts, TIMESTAMP_ADD(h, INTERVAL 1 HOUR)), GREATEST(s.start_ts, h), SECOND) AS occupied_sec,
+    IF(TIMESTAMP_TRUNC(s.start_ts, HOUR) = h, 1, 0) AS arrival
+  FROM ${ref("parking_sessions")} AS s,
+  UNNEST(GENERATE_TIMESTAMP_ARRAY(TIMESTAMP_TRUNC(s.start_ts, HOUR), TIMESTAMP_TRUNC(s.end_ts, HOUR), INTERVAL 1 HOUR)) AS h
+),
+agg AS (
+  SELECT lot_id, hour_ts, SUM(occupied_sec) / 3600 AS avg_occupied_spots, SUM(arrival) AS arrivals
+  FROM session_hours
+  GROUP BY lot_id, hour_ts
+),
+bounds AS (SELECT MIN(hour_ts) AS first_h, MAX(hour_ts) AS last_h FROM agg),
+grid AS (
+  -- Every lot x every hour, so hours with zero cars still appear (needed by ARIMA_PLUS).
+  SELECT l.lot_id, l.capacity, h AS hour_ts
+  FROM ${ref("parkflow_ref", "lots")} AS l
+  CROSS JOIN bounds,
+  UNNEST(GENERATE_TIMESTAMP_ARRAY(first_h, last_h, INTERVAL 1 HOUR)) AS h
+)
+SELECT
+  g.lot_id,
+  g.hour_ts,
+  DATETIME(g.hour_ts, "Asia/Riyadh") AS hour_riyadh,
+  EXTRACT(DAYOFWEEK FROM DATETIME(g.hour_ts, "Asia/Riyadh")) IN (6, 7) AS is_weekend,  -- Fri=6, Sat=7
+  g.capacity,
+  ROUND(COALESCE(a.avg_occupied_spots, 0), 2) AS avg_occupied_spots,
+  ROUND(SAFE_DIVIDE(COALESCE(a.avg_occupied_spots, 0), g.capacity), 4) AS occupancy_rate,
+  COALESCE(a.arrivals, 0) AS arrivals
+FROM grid AS g
+LEFT JOIN agg AS a USING (lot_id, hour_ts)

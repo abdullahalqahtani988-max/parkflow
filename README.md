@@ -30,7 +30,8 @@ Lakehouse (Medallion):
 | `config/` | Static parking-lot reference data (later served from Google Sheets) |
 | `pipelines/` | Apache Beam pipelines (batch + streaming) |
 | `dataform/` | Silver/Gold SQL models and data quality assertions |
-| `sql/` | Ad-hoc BigQuery SQL (DDL, BQML) |
+| `sql/` | BigQuery DDL run outside Dataform (Bronze external table) |
+| `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh` |
 | `orchestration/` | Cloud Scheduler + Workflows definitions |
 | `infra/` | Terraform (planned) |
 | `docs/` | Architecture decisions and design notes |
@@ -65,8 +66,9 @@ Output: `data/bronze/sensor_events/dt=YYYY-MM-DD/part-HHMM.parquet` (git-ignored
 
 - [x] Repository and project structure
 - [x] Sensor simulator → local Bronze Parquet
-- [ ] Bronze on GCS + Silver/Gold (Dataform) + data quality
-- [ ] Pub/Sub + Dataflow streaming
+- [ ] Bronze on GCS + Silver/DLQ/Gold (Dataform) + data quality assertions
+- [x] Streaming pipeline (Beam) tested locally with DirectRunner
+- [ ] Pub/Sub + Dataflow streaming on GCP
 - [ ] Dashboard, live map, BQML forecast
 - [ ] Terraform, CI/CD, daily cost slide
 

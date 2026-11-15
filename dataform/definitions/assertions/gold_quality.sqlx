@@ -1,0 +1,17 @@
+config {
+  type: "assertion",
+  description: "Gold sanity: occupancy within capacity, full hourly grid per lot, no negative arrivals.",
+  tags: ["gold"]
+}
+
+SELECT "occupancy_out_of_range" AS failed_check, CONCAT(lot_id, " @ ", CAST(hour_ts AS STRING)) AS detail
+FROM ${ref("occupancy_hourly")}
+WHERE occupancy_rate < 0 OR occupancy_rate > 1.0001 OR arrivals < 0
+UNION ALL
+SELECT "missing_hours", lot_id
+FROM (
+  SELECT lot_id, COUNT(*) AS n,
+         TIMESTAMP_DIFF(MAX(hour_ts), MIN(hour_ts), HOUR) + 1 AS expected
+  FROM ${ref("occupancy_hourly")} GROUP BY lot_id
+)
+WHERE n != expected

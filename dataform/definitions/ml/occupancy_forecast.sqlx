@@ -1,0 +1,36 @@
+config {
+  type: "operations",
+  schema: "parkflow_gold",
+  name: "occupancy_forecast",
+  hasOutput: true,
+  description: "BigQuery ML: ARIMA_PLUS model per lot + next-48-hour occupancy forecast table.",
+  dependencies: ["occupancy_hourly"],
+  tags: ["ml"]
+}
+
+-- One model trains one time series per lot (time_series_id_col).
+-- ARIMA_PLUS handles trend, daily + weekly seasonality and holidays (SA) automatically.
+CREATE OR REPLACE MODEL `${dataform.projectConfig.defaultProject}.parkflow_gold.occupancy_arima`
+OPTIONS (
+  model_type = "ARIMA_PLUS",
+  time_series_timestamp_col = "hour_ts",
+  time_series_data_col = "occupancy_rate",
+  time_series_id_col = "lot_id",
+  data_frequency = "HOURLY",
+  holiday_region = "SA",
+  horizon = 48
+) AS
+SELECT lot_id, hour_ts, occupancy_rate
+FROM ${ref("occupancy_hourly")};
+
+CREATE OR REPLACE TABLE ${self()} AS
+SELECT
+  lot_id,
+  forecast_timestamp AS hour_ts,
+  DATETIME(forecast_timestamp, "Asia/Riyadh") AS hour_riyadh,
+  GREATEST(0, LEAST(1, forecast_value)) AS forecast_occupancy_rate,
+  GREATEST(0, prediction_interval_lower_bound) AS lower_bound,
+  LEAST(1, prediction_interval_upper_bound) AS upper_bound,
+  CURRENT_TIMESTAMP() AS forecast_created_at
+FROM ML.FORECAST(MODEL `${dataform.projectConfig.defaultProject}.parkflow_gold.occupancy_arima`,
+                 STRUCT(48 AS horizon, 0.9 AS confidence_level));

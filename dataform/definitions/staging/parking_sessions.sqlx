@@ -1,0 +1,25 @@
+config {
+  type: "view",
+  schema: "parkflow_staging",
+  description: "One row per parking session (OCCUPIED -> next event of the same spot).",
+  tags: ["gold"]
+}
+
+WITH ordered AS (
+  SELECT
+    lot_id, spot_id, status, event_ts,
+    LEAD(event_ts) OVER (PARTITION BY spot_id ORDER BY event_ts) AS next_event_ts
+  FROM ${ref("parkflow_silver", "sensor_events")}
+  WHERE event_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${dataform.projectConfig.vars.silver_lookback_days} DAY)
+),
+data_end AS (SELECT MAX(event_ts) AS max_ts FROM ordered)
+SELECT
+  o.lot_id,
+  o.spot_id,
+  o.event_ts AS start_ts,
+  COALESCE(o.next_event_ts, d.max_ts) AS end_ts,          -- still parked at the end of the data
+  o.next_event_ts IS NULL AS is_open,
+  TIMESTAMP_DIFF(COALESCE(o.next_event_ts, d.max_ts), o.event_ts, SECOND) / 60 AS duration_min
+FROM ordered AS o
+CROSS JOIN data_end AS d
+WHERE o.status = "OCCUPIED"

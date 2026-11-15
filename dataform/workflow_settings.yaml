@@ -1,0 +1,7 @@
+defaultProject: parkflow-514314
+defaultLocation: us-central1
+defaultDataset: parkflow_silver
+defaultAssertionDataset: parkflow_assertions
+dataformCoreVersion: 3.1.5
+vars:
+  silver_lookback_days: "120"
