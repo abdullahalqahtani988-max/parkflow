@@ -175,6 +175,8 @@ def run(argv=None):
     p.add_argument("--bigtable_instance")
     p.add_argument("--bigtable_table", default="spot_status")
     p.add_argument("--window_sec", type=int, default=60)
+    p.add_argument("--bq_method", choices=["streaming_inserts", "storage_write"], default="streaming_inserts",
+                   help="storage_write is cross-language (Java); not supported by the local streaming DirectRunner")
     args, beam_args = p.parse_known_args(argv)
 
     options = PipelineOptions(beam_args)
@@ -223,9 +225,12 @@ def run(argv=None):
         else:
             proj = args.bq_project
             bq = dict(create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
-                      write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
-                      method=beam.io.WriteToBigQuery.Method.STORAGE_WRITE_API,
-                      triggering_frequency=5 if args.input_subscription else None)
+                      write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND)
+            if args.bq_method == "storage_write":
+                bq.update(method=beam.io.WriteToBigQuery.Method.STORAGE_WRITE_API,
+                          triggering_frequency=5 if args.input_subscription else None)
+            else:
+                bq.update(method=beam.io.WriteToBigQuery.Method.STREAMING_INSERTS)
             silver_rows | "SilverBQ" >> beam.io.WriteToBigQuery(
                 f"{proj}:parkflow_silver.sensor_events_stream", schema=SILVER_STREAM_SCHEMA,
                 additional_bq_parameters={"timePartitioning": {"type": "DAY", "field": "event_ts"},
