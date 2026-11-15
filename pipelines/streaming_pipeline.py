@@ -175,6 +175,7 @@ def run(argv=None):
     p.add_argument("--bigtable_instance")
     p.add_argument("--bigtable_table", default="spot_status")
     p.add_argument("--window_sec", type=int, default=60)
+    p.add_argument("--dedup_sec", type=int, default=120)
     p.add_argument("--bq_method", choices=["streaming_inserts", "storage_write"], default="streaming_inserts",
                    help="storage_write is cross-language (Java); not supported by the local streaming DirectRunner")
     args, beam_args = p.parse_known_args(argv)
@@ -195,10 +196,13 @@ def run(argv=None):
 
         parsed = raw | "ParseValidate" >> beam.ParDo(ParseAndValidate()).with_outputs(DLQ, main="ok")
 
-        # Pub/Sub is at-least-once and devices retry: drop repeated event_ids seen in the last 10 min.
+        # Pub/Sub is at-least-once and devices retry: drop repeated event_ids seen recently.
+        # Trade-off: each key's dedup timer HOLDS the watermark for --dedup_sec, so a longer
+        # dedup window catches more retries but delays the real-time windows by the same amount.
+        # Retries arrive within ~30 s, so 120 s is enough; Silver's MERGE catches anything later.
         unique = (parsed.ok
                   | "KeyByEventId" >> beam.Map(lambda e: (e["event_id"], e))
-                  | "Dedup" >> DeduplicatePerKey(processing_time_duration=Duration(seconds=600))
+                  | "Dedup" >> DeduplicatePerKey(processing_time_duration=Duration(seconds=args.dedup_sec))
                   | "DropKey" >> beam.Values())
 
         lots_si = pipe | "LotsTable" >> beam.Create([lots])

@@ -25,3 +25,5 @@ Each decision lists the choice and **why** it was made.
 | 19 | Streaming dedup with Beam `DeduplicatePerKey` (10 min) + MERGE downstream | Pub/Sub is at-least-once and devices retry; dedup close to the source keeps real-time counts correct, MERGE guarantees it in Silver. |
 | 20 | Windows use **event time** with 1 h allowed lateness | Late sensor messages are counted in the minute they happened, not when they arrived. |
 | 21 | Dataflow: 1 × e2-standard-2 worker, Streaming Engine, run only during tests, stopped with **drain** | Keeps cost near $0.3/hour; drain finishes in-flight data before shutdown (no loss). |
+| 22 | Pub/Sub messages carry `event_ts` as an attribute; Beam reads it with `timestamp_attribute` | The watermark is then built from **event time**. Assigning timestamps after the read made every event look late and windows never closed (found in the first Dataflow test). |
+| 23 | Streaming dedup window = 120 s (`--dedup_sec`) | Dedup timers hold the watermark; 10 min delayed real-time output by 10 min. Device retries arrive within ~30 s, and Silver's MERGE removes any later duplicate. |
