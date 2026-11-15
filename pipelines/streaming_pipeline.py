@@ -187,7 +187,9 @@ def run(argv=None):
 
     with beam.Pipeline(options=options) as pipe:
         if args.input_subscription:
-            raw = pipe | "ReadPubSub" >> beam.io.ReadFromPubSub(subscription=args.input_subscription)
+            # Watermark from EVENT time (attribute set by the publisher), not Pub/Sub publish time.
+            raw = pipe | "ReadPubSub" >> beam.io.ReadFromPubSub(
+                subscription=args.input_subscription, timestamp_attribute="event_ts")
         else:
             raw = pipe | "ReadFile" >> beam.io.ReadFromText(args.input_file) | beam.Map(str.encode)
 

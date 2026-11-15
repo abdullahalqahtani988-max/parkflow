@@ -9,7 +9,7 @@ EXTRA=${EXTRA:-}   # e.g. EXTRA="--bigtable_instance parkflow-bt"
 
 gcloud storage cp config/lots.csv "gs://$BUCKET/config/lots.csv"
 . .venv/bin/activate
-pip install -q -r pipelines/requirements.txt
+pip install -q setuptools wheel -r pipelines/requirements.txt   # setuptools: needed to package setup.py on Python 3.12
 
 python -m pipelines.streaming_pipeline \
   --runner DataflowRunner --streaming \

@@ -25,8 +25,8 @@ from simulator import generate as g
 
 
 def build_events(sim_minutes: float, speed: float, seed: int, lots_path: str,
-                 malformed_rate: float) -> list[tuple[float, bytes]]:
-    """Return (seconds_from_start, payload) pairs sorted by send time."""
+                 malformed_rate: float) -> list[tuple[float, bytes, dict]]:
+    """Return (seconds_from_start, payload, attributes) sorted by send time."""
     rng = random.Random(seed)
     wall_start = datetime.now(timezone.utc)
     sim_start = wall_start  # simulate "today" so occupancy matches the real hour
@@ -48,7 +48,10 @@ def build_events(sim_minutes: float, speed: float, seed: int, lots_path: str,
         payload = json.dumps(record).encode()
         if rng.random() < malformed_rate:
             payload = payload[: len(payload) // 2]  # truncated JSON, like a broken network packet
-        out.append(((sent_wall - wall_start).total_seconds(), payload))
+        # event_ts also travels as a Pub/Sub attribute (RFC 3339) so Dataflow can build its
+        # watermark from EVENT time (ReadFromPubSub(timestamp_attribute="event_ts")).
+        attrs = {"event_ts": to_wall(e["event_ts"]).strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
+        out.append(((sent_wall - wall_start).total_seconds(), payload, attrs))
     out.sort(key=lambda x: x[0])
     return out
 
@@ -71,7 +74,7 @@ def main() -> None:
 
     if args.out:
         with open(args.out, "wb") as f:
-            for _, payload in events:
+            for _, payload, _attrs in events:
                 f.write(payload + b"\n")
         print(f"Wrote {args.out}")
         return
@@ -82,13 +85,13 @@ def main() -> None:
         batch_settings=pubsub_v1.types.BatchSettings(max_messages=500, max_latency=0.2))
     t0 = time.monotonic()
     futures = []
-    for i, (offset, payload) in enumerate(events, 1):
+    for i, (offset, payload, attrs) in enumerate(events, 1):
         delay = offset - (time.monotonic() - t0)
         if delay > 0:
             time.sleep(delay)
-        futures.append(publisher.publish(args.topic, payload))
+        futures.append(publisher.publish(args.topic, payload, **attrs))
         if i % 1000 == 0:
-            print(f"  published {i}/{len(events)}")
+            print(f"  published {i}/{len(events)}", flush=True)
     for f in futures:
         f.result()
     print(f"Done: {len(events)} messages published")
