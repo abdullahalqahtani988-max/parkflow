@@ -10,7 +10,7 @@ config {
 
 -- One model trains one time series per lot (time_series_id_col).
 -- ARIMA_PLUS handles trend, daily + weekly seasonality and holidays (SA) automatically.
-CREATE OR REPLACE MODEL `${dataform.projectConfig.defaultProject}.parkflow_gold.occupancy_arima`
+CREATE OR REPLACE MODEL `${dataform.projectConfig.defaultDatabase}.parkflow_gold.occupancy_arima`
 OPTIONS (
   model_type = "ARIMA_PLUS",
   time_series_timestamp_col = "hour_ts",
@@ -32,5 +32,5 @@ SELECT
   GREATEST(0, prediction_interval_lower_bound) AS lower_bound,
   LEAST(1, prediction_interval_upper_bound) AS upper_bound,
   CURRENT_TIMESTAMP() AS forecast_created_at
-FROM ML.FORECAST(MODEL `${dataform.projectConfig.defaultProject}.parkflow_gold.occupancy_arima`,
+FROM ML.FORECAST(MODEL `${dataform.projectConfig.defaultDatabase}.parkflow_gold.occupancy_arima`,
                  STRUCT(48 AS horizon, 0.9 AS confidence_level));

@@ -26,7 +26,7 @@ gcloud pubsub subscriptions describe sensor-events-archive >/dev/null 2>&1 || \
   gcloud pubsub subscriptions create sensor-events-archive --topic=$TOPIC \
     --cloud-storage-bucket="$BUCKET" \
     --cloud-storage-file-prefix="bronze/stream/" \
-    --cloud-storage-file-datetime-format="dt=YYYY-MM-DD/hh_mm_ssZ" \
+    --cloud-storage-file-datetime-format="YYYY-MM-DD/hh_mm_ssZ" \
     --cloud-storage-max-duration=5m \
     --cloud-storage-output-format=text
 
