@@ -32,7 +32,8 @@ Lakehouse (Medallion):
 | `dataform/` | Silver/Gold SQL models and data quality assertions |
 | `sql/` | BigQuery DDL run outside Dataform (Bronze external table) |
 | `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh`, `setup_orchestration.sh`, `setup_live_demo.sh` |
-| `orchestration/` | Cloud Scheduler + Workflows definitions |
+| `orchestration/` | Cloud Scheduler + Workflows definitions, daily batch job, live demo controller |
+| `live_map/` | Cloud Run web app: live occupancy map (Bigtable live / BigQuery fallback) |
 | `infra/` | Terraform (planned) |
 | `docs/` | Architecture decisions and design notes |
 | `tests/` | Unit tests |
@@ -73,7 +74,7 @@ Output: `data/bronze/sensor_events/dt=YYYY-MM-DD/part-HHMM.parquet` (git-ignored
 - [x] Data Studio dashboard (KPIs, hourly profile, daily arrivals, forecast, data quality)
 - [x] CI (GitHub Actions: pytest + Dataform compile)
 - [x] Orchestration code: Cloud Scheduler → Workflows → Cloud Run Job (`scripts/setup_orchestration.sh`)
-- [ ] Live map on Cloud Run
+- [x] Live map on Cloud Run (`live_map/`, `scripts/deploy_live_map.sh`)
 - [ ] Terraform, daily cost slide
 
 See [docs/decisions.md](docs/decisions.md) for the reasoning behind each design choice.

@@ -2,3 +2,4 @@
 pyarrow>=15.0
 pytest>=8.0
 -r pipelines/requirements.txt
+flask>=3.0   # live_map tests

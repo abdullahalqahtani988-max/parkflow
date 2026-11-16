@@ -1,0 +1,4 @@
+flask>=3.0
+gunicorn>=22.0
+google-cloud-bigtable>=2.20
+google-cloud-bigquery>=3.20

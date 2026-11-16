@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParkFlow | Live Parking Map - Riyadh</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --line:#1f2937; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; border-bottom:1px solid var(--line); }
+  h1 { font-size:18px; margin:0; letter-spacing:.2px; }
+  .badge { font-size:12px; padding:4px 10px; border-radius:999px; font-weight:600; }
+  .live { background:#064e3b; color:#6ee7b7; }
+  .batch { background:#1e3a8a; color:#93c5fd; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#34d399; margin-right:6px; animation:pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity:.25; } }
+  main { display:grid; grid-template-columns: 1fr 360px; height: calc(100vh - 56px); }
+  #map { height:100%; }
+  aside { background:var(--panel); border-left:1px solid var(--line); overflow:auto; padding:14px; }
+  .kpis { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .kpi { background:#0b1220; border:1px solid var(--line); border-radius:10px; padding:10px; }
+  .kpi b { display:block; font-size:22px; }
+  .kpi span { color:var(--muted); font-size:12px; }
+  .lot { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px; background:#0b1220; }
+  .lot .top { display:flex; justify-content:space-between; font-size:14px; }
+  .lot small { color:var(--muted); }
+  .bar { height:8px; background:#1f2937; border-radius:6px; margin-top:8px; overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:6px; transition: width .6s; }
+  footer { color:var(--muted); font-size:11px; margin-top:10px; line-height:1.5; }
+  @media (max-width: 800px) { main { grid-template-columns:1fr; grid-template-rows: 55vh auto; } aside { border-left:0; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>ParkFlow · Live Parking Map — Riyadh</h1>
+  <span id="badge" class="badge batch">loading…</span>
+</header>
+<main>
+  <div id="map"></div>
+  <aside>
+    <div class="kpis">
+      <div class="kpi"><b id="k-occ">–</b><span>Occupied spots</span></div>
+      <div class="kpi"><b id="k-free">–</b><span>Free spots</span></div>
+    </div>
+    <div id="lots"></div>
+    <footer id="foot"></footer>
+  </aside>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([24.69, 46.70], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+const markers = {};
+// green < 60% < amber < 85% < red
+const color = p => p >= 85 ? '#ef4444' : p >= 60 ? '#f59e0b' : '#22c55e';
+const fmt = n => n.toLocaleString('en-US');
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/lots', {cache: 'no-store'});
+    const d = await r.json();
+    const badge = document.getElementById('badge');
+    badge.className = 'badge ' + d.source;
+    badge.innerHTML = d.source === 'live'
+      ? '<span class="dot"></span>LIVE · Pub/Sub → Dataflow → Bigtable'
+      : 'Last batch · BigQuery Gold';
+    let occ = 0, free = 0, html = '';
+    const bounds = [];
+    d.lots.forEach(l => {
+      occ += l.occupied; free += l.free;
+      const c = color(l.pct), ll = [l.latitude, l.longitude];
+      bounds.push(ll);
+      const radius = 18 + Math.sqrt(l.capacity) * 0.9;
+      const tip = `<b>${l.lot_name}</b><br>${l.lot_type} · ${l.district}<br>` +
+                  `${fmt(l.occupied)} / ${fmt(l.capacity)} occupied (<b>${l.pct}%</b>)<br>${fmt(l.free)} free`;
+      if (!markers[l.lot_id]) {
+        markers[l.lot_id] = L.circleMarker(ll, {radius, weight: 2, fillOpacity: .55}).addTo(map);
+      }
+      markers[l.lot_id].setStyle({color: c, fillColor: c}).bindTooltip(tip);
+      html += `<div class="lot"><div class="top"><span><b>${l.lot_name}</b> <small>${l.lot_type}</small></span>` +
+              `<span><b>${l.pct}%</b></span></div><small>${fmt(l.occupied)} / ${fmt(l.capacity)} · ${fmt(l.free)} free</small>` +
+              `<div class="bar"><i style="width:${l.pct}%;background:${c}"></i></div></div>`;
+    });
+    if (!window._fitted) { map.fitBounds(bounds, {padding: [60, 60]}); window._fitted = true; }
+    document.getElementById('lots').innerHTML = html;
+    document.getElementById('k-occ').textContent = fmt(occ);
+    document.getElementById('k-free').textContent = fmt(free);
+    const dt = d.data_time ? new Date(d.data_time).toLocaleString('en-GB', {timeZone: 'Asia/Riyadh'}) : '–';
+    document.getElementById('foot').innerHTML =
+      `Latest sensor event: ${dt} (Riyadh)<br>Refreshed: ${new Date().toLocaleTimeString('en-GB', {timeZone: 'Asia/Riyadh'})} · every 10 s<br>` +
+      `Source switches automatically: Bigtable while streaming is running, otherwise BigQuery Gold.`;
+  } catch (e) { console.error(e); }
+}
+refresh(); setInterval(refresh, 10000);
+</script>
+</body>
+</html>
