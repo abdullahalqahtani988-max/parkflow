@@ -34,7 +34,8 @@ gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
 echo "== 3) Artifact Registry + image build (Cloud Build) =="
 gcloud artifacts repositories describe parkflow --location="$REGION" >/dev/null 2>&1 || \
   gcloud artifacts repositories create parkflow --repository-format=docker --location="$REGION"
-gcloud builds submit --config orchestration/cloudbuild.yaml --substitutions=_IMAGE="$IMAGE" .
+gcloud builds submit --config orchestration/cloudbuild.yaml \
+  --substitutions=_DOCKERFILE=orchestration/daily_job/Dockerfile,_IMAGE="$IMAGE" .
 
 echo "== 4) Cloud Run Job =="
 gcloud run jobs deploy parkflow-daily --image="$IMAGE" --region="$REGION" \

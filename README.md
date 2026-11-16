@@ -31,7 +31,7 @@ Lakehouse (Medallion):
 | `pipelines/` | Apache Beam pipelines (batch + streaming) |
 | `dataform/` | Silver/Gold SQL models and data quality assertions |
 | `sql/` | BigQuery DDL run outside Dataform (Bronze external table) |
-| `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh`, `setup_orchestration.sh` |
+| `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh`, `setup_orchestration.sh`, `setup_live_demo.sh` |
 | `orchestration/` | Cloud Scheduler + Workflows definitions |
 | `infra/` | Terraform (planned) |
 | `docs/` | Architecture decisions and design notes |
