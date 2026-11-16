@@ -7,7 +7,9 @@ config {
     partitionBy: "DATE(event_ts)",
     clusterBy: ["lot_id", "spot_id"],
     requirePartitionFilter: true,
-    updatePartitionFilter: "event_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${dataform.projectConfig.vars.silver_lookback_days} DAY)"
+    // config {} values are plain strings (no ${...} templating here): keep 120 in sync
+    // with vars.silver_lookback_days in workflow_settings.yaml.
+    updatePartitionFilter: "event_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 120 DAY)"
   },
   tags: ["silver"]
 }
