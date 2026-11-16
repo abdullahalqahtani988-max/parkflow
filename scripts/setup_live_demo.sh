@@ -25,11 +25,9 @@ for role in roles/dataflow.admin roles/bigtable.admin roles/pubsub.publisher rol
 done
 gcloud storage cp config/lots.csv "gs://$BUCKET/config/lots.csv"
 
-echo "== 2) Build and push the controller image =="
-# Built with Docker in Cloud Shell (Cloud Build is an alternative: orchestration/cloudbuild.yaml)
-gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-docker build -f orchestration/live_demo/Dockerfile -t "$IMAGE" .
-docker push "$IMAGE"
+echo "== 2) Build the controller image =="
+gcloud builds submit --config orchestration/cloudbuild.yaml \
+  --substitutions=_DOCKERFILE=orchestration/live_demo/Dockerfile,_IMAGE="$IMAGE" .
 
 echo "== 3) Cloud Run Jobs (run + stop) =="
 ENV="PROJECT=$PROJECT,REGION=$REGION,BUCKET=$BUCKET,END_TIME=$END_TIME"
