@@ -57,10 +57,6 @@ import {
   id = "projects/parkflow-514314/serviceAccounts/parkflow-map@parkflow-514314.iam.gserviceaccount.com"
 }
 import {
-  to = google_workflows_workflow.daily
-  id = "projects/parkflow-514314/locations/us-central1/workflows/parkflow-daily"
-}
-import {
   to = google_cloud_scheduler_job.daily
   id = "projects/parkflow-514314/locations/us-central1/jobs/parkflow-daily"
 }

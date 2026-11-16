@@ -1,10 +1,12 @@
 # ParkFlow platform infrastructure (Infrastructure as Code).
 #
 # Scope = the long-lived platform: storage, BigQuery, Pub/Sub, registry,
-# service accounts + IAM, orchestration (Workflows + Scheduler).
+# service accounts + IAM, Cloud Scheduler triggers.
 # Not here, on purpose:
-#   - Cloud Run job/service *deployments*: images change on every release and are
-#     deployed by scripts/CI (gcloud run deploy); Terraform would fight those updates.
+#   - Cloud Run job/service *deployments* and the Workflows *definition*: they are
+#     application code that changes on every release, deployed by scripts/CI
+#     (gcloud run deploy / gcloud workflows deploy). The google provider also cannot
+#     import an existing workflow. Terraform manages the schedule that triggers it.
 #   - Bigtable + Dataflow: ephemeral, created/destroyed by the live demo job (cost).
 # Resources first created with gcloud are adopted with `import` blocks (imports.tf).
 
@@ -115,13 +117,6 @@ resource "google_project_iam_member" "live_map" {
 }
 
 # ----------------------------------------------------------------- orchestration
-resource "google_workflows_workflow" "daily" {
-  name            = "parkflow-daily"
-  region          = var.region
-  service_account = google_service_account.orchestrator.id
-  source_contents = file("${path.module}/../orchestration/workflow.yaml")
-}
-
 resource "google_cloud_scheduler_job" "daily" {
   name      = "parkflow-daily"
   region    = var.region
@@ -129,7 +124,7 @@ resource "google_cloud_scheduler_job" "daily" {
   time_zone = "Asia/Riyadh"
   http_target {
     http_method = "POST"
-    uri         = "https://workflowexecutions.googleapis.com/v1/${google_workflows_workflow.daily.id}/executions"
+    uri         = "https://workflowexecutions.googleapis.com/v1/projects/${var.project}/locations/${var.region}/workflows/parkflow-daily/executions"
     body        = base64encode("{\"argument\":\"{}\"}")
     oauth_token {
       service_account_email = local.orchestrator
