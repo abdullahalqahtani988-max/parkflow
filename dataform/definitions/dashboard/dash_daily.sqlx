@@ -1,0 +1,12 @@
+config {
+  type: "view",
+  schema: "parkflow_gold",
+  description: "Dashboard: one row per lot per Riyadh day with arrivals, peak occupancy (%), turnover and average stay.",
+  tags: ["gold", "dashboard"]
+}
+
+SELECT
+  day, lot_name, lot_type, capacity, arrivals, turnover, avg_stay_min,
+  ROUND(100 * peak_occupancy_rate, 1) AS peak_occupancy_pct,
+  peak_hour
+FROM ${ref("lot_daily_kpis")}

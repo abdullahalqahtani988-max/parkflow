@@ -1,0 +1,16 @@
+config {
+  type: "view",
+  schema: "parkflow_gold",
+  description: "Dashboard: BQML ARIMA_PLUS forecast (%) for the next 48 hours with a 90% interval, per lot.",
+  dependencies: ["occupancy_forecast"],
+  tags: ["ml", "dashboard"]
+}
+
+SELECT
+  f.hour_riyadh,
+  l.lot_name,
+  ROUND(100 * f.forecast_occupancy_rate, 1) AS forecast_pct,
+  ROUND(100 * f.lower_bound, 1) AS lower_pct,
+  ROUND(100 * f.upper_bound, 1) AS upper_pct
+FROM `${dataform.projectConfig.defaultDatabase}.parkflow_gold.occupancy_forecast` AS f
+JOIN ${ref("parkflow_ref", "lots")} AS l USING (lot_id)

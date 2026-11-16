@@ -66,10 +66,14 @@ Output: `data/bronze/sensor_events/dt=YYYY-MM-DD/part-HHMM.parquet` (git-ignored
 
 - [x] Repository and project structure
 - [x] Sensor simulator → local Bronze Parquet
-- [ ] Bronze on GCS + Silver/DLQ/Gold (Dataform) + data quality assertions
+- [x] Bronze on GCS + Silver/DLQ/Gold (Dataform) + data quality assertions
 - [x] Streaming pipeline (Beam) tested locally with DirectRunner
-- [ ] Pub/Sub + Dataflow streaming on GCP
-- [ ] Dashboard, live map, BQML forecast
-- [ ] Terraform, CI/CD, daily cost slide
+- [x] Pub/Sub + Dataflow streaming on GCP (+ Bigtable live state)
+- [x] BQML ARIMA_PLUS occupancy forecast (48h)
+- [x] Data Studio dashboard (KPIs, hourly profile, daily arrivals, forecast, data quality)
+- [x] CI (GitHub Actions: pytest + Dataform compile)
+- [ ] Orchestration (Cloud Scheduler + Workflows)
+- [ ] Live map on Cloud Run
+- [ ] Terraform, daily cost slide
 
 See [docs/decisions.md](docs/decisions.md) for the reasoning behind each design choice.

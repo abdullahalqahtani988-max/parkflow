@@ -1,0 +1,16 @@
+config {
+  type: "view",
+  schema: "parkflow_gold",
+  description: "Dashboard: typical occupancy (%) by hour of day, weekday vs weekend, per lot.",
+  tags: ["gold", "dashboard"]
+}
+
+SELECT
+  l.lot_name,
+  EXTRACT(HOUR FROM o.hour_riyadh) AS hour_of_day,
+  IF(o.is_weekend, "Weekend (Fri-Sat)", "Weekday") AS day_type,
+  ROUND(100 * AVG(o.occupancy_rate), 1) AS avg_occupancy_pct,
+  ROUND(AVG(o.arrivals), 1) AS avg_arrivals
+FROM ${ref("occupancy_hourly")} AS o
+JOIN ${ref("parkflow_ref", "lots")} AS l USING (lot_id)
+GROUP BY 1, 2, 3

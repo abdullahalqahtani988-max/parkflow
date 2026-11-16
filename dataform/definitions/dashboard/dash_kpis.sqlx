@@ -1,0 +1,16 @@
+config {
+  type: "view",
+  schema: "parkflow_gold",
+  description: "Dashboard: headline KPIs (one row) for scorecards.",
+  tags: ["gold", "dashboard"]
+}
+
+SELECT
+  (SELECT COUNT(*) FROM ${ref("parkflow_ref", "lots")}) AS lots,
+  (SELECT SUM(capacity) FROM ${ref("parkflow_ref", "lots")}) AS spots,
+  (SELECT SUM(bronze_rows) FROM ${ref("data_quality_daily")}) AS bronze_events,
+  (SELECT SUM(duplicate_rows) FROM ${ref("data_quality_daily")}) AS duplicates_removed,
+  (SELECT SUM(invalid_rows) FROM ${ref("data_quality_daily")}) AS dlq_events,
+  (SELECT ROUND(100 * SUM(valid_rows) / SUM(bronze_rows), 2) FROM ${ref("data_quality_daily")}) AS valid_pct,
+  (SELECT ROUND(100 * AVG(occupancy_rate), 1) FROM ${ref("occupancy_hourly")}) AS avg_occupancy_pct,
+  (SELECT SUM(arrivals) FROM ${ref("occupancy_hourly")}) AS total_arrivals
