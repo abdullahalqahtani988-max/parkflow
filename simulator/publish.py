@@ -53,7 +53,12 @@ def build_events(sim_minutes: float, speed: float, seed: int, lots_path: str,
         attrs = {"event_ts": to_wall(e["event_ts"]).strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
         out.append(((sent_wall - wall_start).total_seconds(), payload, attrs))
     out.sort(key=lambda x: x[0])
-    return out
+    # Late events can be *sent* up to 2 h after they happened. Without this cut the
+    # publisher would keep running long after --minutes (found in the first live test:
+    # a 5-minute run was still publishing 30 minutes later). Events whose send time
+    # falls after the window are simply never sent, like a sensor that stayed offline.
+    horizon = sim_minutes * 60
+    return [x for x in out if x[0] <= horizon]
 
 
 def main() -> None:

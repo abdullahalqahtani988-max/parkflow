@@ -57,7 +57,7 @@ gcloud bigtable instances tables describe spot_status --instance="$BT_INSTANCE" 
 log "2) Start Dataflow streaming job"
 JOB="parkflow-live-$(date +%Y%m%d-%H%M)"
 # The launcher process stays attached to the streaming job; run it in the background.
-python3 -m pipelines.streaming_pipeline \
+python3 -u -m pipelines.streaming_pipeline \
   --runner DataflowRunner --streaming \
   --project "$PROJECT" --region "$REGION" --job_name "$JOB" \
   --temp_location "gs://$BUCKET/tmp" --staging_location "gs://$BUCKET/staging" \
@@ -90,7 +90,7 @@ fi
 [ "$MINUTES" -gt 0 ] || { log "END_TIME already passed"; exit 1; }
 
 log "3) Publishing live sensor events for $MINUTES minutes at ${SPEED}x"
-python3 -m simulator.publish --topic "$TOPIC" --minutes "$MINUTES" --speed "$SPEED"
+python3 -u -m simulator.publish --topic "$TOPIC" --minutes "$MINUTES" --speed "$SPEED"
 
 log "4) Window closed; letting the last windows flush (2 min)"
 sleep 120

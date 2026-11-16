@@ -59,3 +59,12 @@ def test_write_bronze_layout(tmp_path):
     assert (tmp_path / "dt=2026-11-05" / "part-1000.parquet").exists()
     table = ds.dataset(tmp_path, format="parquet", partitioning="hive").to_table()
     assert table.num_rows == 38
+
+
+def test_publisher_stops_at_requested_duration():
+    """Late events (sent up to 2 h later) must not stretch a live run past --minutes."""
+    from simulator.publish import build_events
+    minutes = 2
+    events = build_events(minutes, speed=60, seed=1, lots_path="config/lots.csv", malformed_rate=0.0)
+    assert events, "expected some events"
+    assert max(offset for offset, _, _ in events) <= minutes * 60
