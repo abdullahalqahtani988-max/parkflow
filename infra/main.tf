@@ -122,6 +122,15 @@ resource "google_cloud_scheduler_job" "daily" {
   region    = var.region
   schedule  = "0 3 * * *"
   time_zone = "Asia/Riyadh"
+  # Explicit = the API defaults: no automatic re-run of a missed trigger
+  # (the daily workflow retries its own steps; the live demo has its own safety-stop job).
+  retry_config {
+    retry_count          = 0
+    max_retry_duration   = "0s"
+    min_backoff_duration = "5s"
+    max_backoff_duration = "3600s"
+    max_doublings        = 5
+  }
   http_target {
     http_method = "POST"
     uri         = "https://workflowexecutions.googleapis.com/v1/projects/${var.project}/locations/${var.region}/workflows/parkflow-daily/executions"
@@ -143,6 +152,15 @@ resource "google_cloud_scheduler_job" "live" {
   region    = var.region
   schedule  = each.value.schedule
   time_zone = "Asia/Riyadh"
+  # Explicit = the API defaults: no automatic re-run of a missed trigger
+  # (the daily workflow retries its own steps; the live demo has its own safety-stop job).
+  retry_config {
+    retry_count          = 0
+    max_retry_duration   = "0s"
+    min_backoff_duration = "5s"
+    max_backoff_duration = "3600s"
+    max_doublings        = 5
+  }
   http_target {
     http_method = "POST"
     uri         = "${local.scheduler_uri}/${each.value.job}:run"
