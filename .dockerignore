@@ -1,0 +1,8 @@
+.git
+.venv
+data/
+**/__pycache__
+dataform/node_modules
+dataform/.df-credentials.json
+*.tfstate*
+*-key.json
