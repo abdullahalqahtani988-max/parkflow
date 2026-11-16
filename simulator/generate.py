@@ -224,8 +224,12 @@ def inject_dirty_data(events: list[dict], rng: random.Random, dup_rate: float,
 # ---------------------------------------------------------------------------
 # Writing Bronze Parquet files
 # ---------------------------------------------------------------------------
-def write_bronze(events: list[dict], out_dir: Path, file_minutes: int) -> int:
-    """Group by arrival time (sent_ts, UTC) into one file per `file_minutes` window."""
+def write_bronze(events: list[dict], out_dir: Path, file_minutes: int, prefix: str = "part") -> int:
+    """Group by arrival time (sent_ts, UTC) into one file per `file_minutes` window.
+
+    `prefix` keeps file names unique when several runs write into the same
+    dt= partition (e.g. a late event from yesterday's run lands in today).
+    """
     buckets = defaultdict(list)
     for e in events:
         s = e["sent_ts"]
@@ -237,7 +241,7 @@ def write_bronze(events: list[dict], out_dir: Path, file_minutes: int) -> int:
         part_dir = out_dir / f"dt={window:%Y-%m-%d}"
         part_dir.mkdir(parents=True, exist_ok=True)
         table = pa.Table.from_pylist(rows, schema=BRONZE_SCHEMA)
-        pq.write_table(table, part_dir / f"part-{window:%H%M}.parquet", compression="snappy")
+        pq.write_table(table, part_dir / f"{prefix}-{window:%H%M}.parquet", compression="snappy")
     return len(buckets)
 
 
@@ -255,6 +259,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--bad-rate", type=float, default=0.005)
     p.add_argument("--late-rate", type=float, default=0.02)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--file-prefix", default="part", help="Parquet file name prefix")
     return p.parse_args()
 
 
@@ -275,7 +280,7 @@ def main() -> None:
     clean_count = len(events)
 
     events, stats = inject_dirty_data(events, rng, args.dup_rate, args.bad_rate, args.late_rate)
-    n_files = write_bronze(events, Path(args.out), args.file_minutes)
+    n_files = write_bronze(events, Path(args.out), args.file_minutes, args.file_prefix)
 
     per_lot = Counter(e["lot_id"] for e in events)
     print(f"Spots: {len(spots)} | clean events: {clean_count} | written rows: {len(events)} | files: {n_files}")

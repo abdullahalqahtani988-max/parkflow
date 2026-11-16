@@ -31,7 +31,7 @@ Lakehouse (Medallion):
 | `pipelines/` | Apache Beam pipelines (batch + streaming) |
 | `dataform/` | Silver/Gold SQL models and data quality assertions |
 | `sql/` | BigQuery DDL run outside Dataform (Bronze external table) |
-| `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh` |
+| `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh`, `setup_orchestration.sh` |
 | `orchestration/` | Cloud Scheduler + Workflows definitions |
 | `infra/` | Terraform (planned) |
 | `docs/` | Architecture decisions and design notes |
@@ -72,7 +72,7 @@ Output: `data/bronze/sensor_events/dt=YYYY-MM-DD/part-HHMM.parquet` (git-ignored
 - [x] BQML ARIMA_PLUS occupancy forecast (48h)
 - [x] Data Studio dashboard (KPIs, hourly profile, daily arrivals, forecast, data quality)
 - [x] CI (GitHub Actions: pytest + Dataform compile)
-- [ ] Orchestration (Cloud Scheduler + Workflows)
+- [x] Orchestration code: Cloud Scheduler → Workflows → Cloud Run Job (`scripts/setup_orchestration.sh`)
 - [ ] Live map on Cloud Run
 - [ ] Terraform, daily cost slide
 

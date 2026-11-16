@@ -1,0 +1,55 @@
+# ParkFlow daily orchestration (Google Cloud Workflows).
+# Triggered by Cloud Scheduler every night; can also be run by hand with an
+# optional date:  gcloud workflows run parkflow-daily --data='{"run_date":"2026-11-15"}'
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - project: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - region: "us-central1"
+          - job: "parkflow-daily"
+          - run_date: ${default(map.get(args, "run_date"), "")}
+          - env_overrides: []
+    - add_date_override:
+        switch:
+          - condition: ${run_date != ""}
+            assign:
+              - env_overrides:
+                  - name: "RUN_DATE"
+                    value: ${run_date}
+    - run_job:
+        # The connector starts the Cloud Run Job and waits until it finishes.
+        try:
+          call: googleapis.run.v2.projects.locations.jobs.run
+          args:
+            name: ${"projects/" + project + "/locations/" + region + "/jobs/" + job}
+            body:
+              overrides:
+                containerOverrides:
+                  - env: ${env_overrides}
+          result: execution
+        retry:
+          predicate: ${http.default_retry_predicate}
+          max_retries: 2
+          backoff:
+            initial_delay: 60
+            max_delay: 300
+            multiplier: 2
+        except:
+          as: e
+          steps:
+            - log_failure:
+                call: sys.log
+                args:
+                  severity: ERROR
+                  json: {"pipeline": "parkflow-daily", "status": "FAILED", "error": "${e}"}
+            - fail:
+                raise: ${e}
+    - log_success:
+        call: sys.log
+        args:
+          severity: INFO
+          json: {"pipeline": "parkflow-daily", "status": "SUCCEEDED", "execution": "${execution.name}"}
+    - done:
+        return: ${execution.name}

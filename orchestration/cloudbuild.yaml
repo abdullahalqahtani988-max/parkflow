@@ -1,0 +1,10 @@
+# Builds the daily-job image from the repo root:
+#   gcloud builds submit --config orchestration/cloudbuild.yaml .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "orchestration/daily_job/Dockerfile", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/parkflow/daily-job:latest
+options:
+  logging: CLOUD_LOGGING_ONLY
