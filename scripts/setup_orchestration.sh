@@ -18,6 +18,11 @@ gcloud config set project "$PROJECT" >/dev/null
 echo "== 1) Enable APIs =="
 gcloud services enable run.googleapis.com workflows.googleapis.com \
   cloudscheduler.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+# On a new project the service agents are created lazily; create them now so the
+# first `workflows deploy` / `builds submit` right after enabling does not fail.
+for svc in workflows.googleapis.com cloudbuild.googleapis.com cloudscheduler.googleapis.com; do
+  gcloud beta services identity create --service="$svc" --quiet >/dev/null 2>&1 || true
+done
 
 echo "== 2) Service account (least privilege) =="
 gcloud iam service-accounts describe "$SA" >/dev/null 2>&1 || \
