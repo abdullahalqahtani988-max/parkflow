@@ -34,7 +34,7 @@ Lakehouse (Medallion):
 | `scripts/` | One-command setup: `setup_batch.sh`, `setup_streaming.sh`, `run_dataflow.sh`, `stop_dataflow.sh`, `setup_orchestration.sh`, `setup_live_demo.sh` |
 | `orchestration/` | Cloud Scheduler + Workflows definitions, daily batch job, live demo controller |
 | `live_map/` | Cloud Run web app: live occupancy map (Bigtable live / BigQuery fallback) |
-| `infra/` | Terraform (planned) |
+| `infra/` | Terraform: platform infrastructure as code (remote state in GCS) |
 | `docs/` | Architecture decisions and design notes |
 | `tests/` | Unit tests |
 
@@ -75,6 +75,7 @@ Output: `data/bronze/sensor_events/dt=YYYY-MM-DD/part-HHMM.parquet` (git-ignored
 - [x] CI (GitHub Actions: pytest + Dataform compile)
 - [x] Orchestration code: Cloud Scheduler → Workflows → Cloud Run Job (`scripts/setup_orchestration.sh`)
 - [x] Live map on Cloud Run (`live_map/`, `scripts/deploy_live_map.sh`)
-- [ ] Terraform, daily cost slide
+- [x] Terraform (`infra/`, `scripts/terraform_bootstrap.sh`): `plan` shows *No changes*
+- [ ] Daily cost slide
 
 See [docs/decisions.md](docs/decisions.md) for the reasoning behind each design choice.
