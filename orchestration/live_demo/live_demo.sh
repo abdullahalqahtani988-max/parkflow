@@ -20,16 +20,18 @@ TOPIC="projects/$PROJECT/topics/sensor-events"
 
 log() { echo "[$(TZ=Asia/Riyadh date +%H:%M:%S)] $*"; }
 
+active_jobs() { gcloud dataflow jobs list --region "$REGION" --status=active --format='value(id)'; }
+
 cleanup() {
-  log "Cleanup: draining Dataflow jobs"
-  for id in $(gcloud dataflow jobs list --region "$REGION" --status=active --format='value(id)'); do
-    gcloud dataflow jobs drain "$id" --region "$REGION" || gcloud dataflow jobs cancel "$id" --region "$REGION"
+  log "Cleanup: draining Dataflow jobs (finish in-flight data)"
+  for id in $(active_jobs); do gcloud dataflow jobs drain "$id" --region "$REGION" || true; done
+  # A drain can hang while dedup timers / allowed lateness are open (seen in the first
+  # live test: >13 min). Give it 5 min, then cancel so nothing keeps billing.
+  for _ in $(seq 1 10); do [ -z "$(active_jobs)" ] && break; sleep 30; done
+  for id in $(active_jobs); do
+    log "Drain too slow: cancelling $id"; gcloud dataflow jobs cancel "$id" --region "$REGION" || true
   done
-  # Wait for drain so Bigtable is not deleted while workers still write to it (max 10 min)
-  for _ in $(seq 1 20); do
-    [ -z "$(gcloud dataflow jobs list --region "$REGION" --status=active --format='value(id)')" ] && break
-    sleep 30
-  done
+  for _ in $(seq 1 10); do [ -z "$(active_jobs)" ] && break; sleep 30; done
   log "Cleanup: deleting Bigtable instance $BT_INSTANCE"
   gcloud bigtable instances describe "$BT_INSTANCE" >/dev/null 2>&1 && \
     gcloud bigtable instances delete "$BT_INSTANCE" --quiet
@@ -46,6 +48,7 @@ if [ "$MODE" = "stop" ]; then
 fi
 
 trap cleanup EXIT
+trap "exit 143" TERM INT   # turn signals into a normal exit so the EXIT trap runs
 
 log "1) Bigtable instance + table"
 gcloud bigtable instances describe "$BT_INSTANCE" >/dev/null 2>&1 || \
